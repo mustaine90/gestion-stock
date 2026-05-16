@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion · Gestion Stock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy:  #0d1b2a;
+            --cyan:  #00c9b1;
+            --white: #ffffff;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            background: var(--navy);
+            overflow: hidden;
+        }
+
+        /* Panneau gauche décoratif */
+        .login-deco {
+            flex: 1;
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b2d42 50%, #0a2540 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-deco::before {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,201,177,0.15) 0%, transparent 70%);
+            top: -100px; left: -100px;
+        }
+        .login-deco::after {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,201,177,0.1) 0%, transparent 70%);
+            bottom: -50px; right: -50px;
+        }
+
+        .deco-logo {
+            font-size: 4rem;
+            color: var(--cyan);
+            margin-bottom: 24px;
+            filter: drop-shadow(0 0 30px rgba(0,201,177,0.4));
+            position: relative;
+            z-index: 1;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .deco-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: white;
+            text-align: center;
+            letter-spacing: -0.5px;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 12px;
+        }
+
+        .deco-sub {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.45);
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        .deco-stats {
+            display: flex;
+            gap: 32px;
+            margin-top: 48px;
+            position: relative;
+            z-index: 1;
+        }
+        .deco-stat {
+            text-align: center;
+        }
+        .deco-stat .val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--cyan);
+            display: block;
+        }
+        .deco-stat .lbl {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* Panneau droit — formulaire */
+        .login-panel {
+            width: 440px;
+            background: #f0f4f8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 40px;
+        }
+
+        .login-box { width: 100%; }
+
+        .login-greeting {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0d1b2a;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+        .login-hint {
+            font-size: 0.88rem;
+            color: #8896a7;
+            margin-bottom: 36px;
+        }
+
+        .error-box {
+            background: #fde8e9;
+            border-left: 4px solid #e63946;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9b1c28;
+            font-size: 0.88rem;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+        .field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .field-inner {
+            position: relative;
+        }
+        .field-inner i.icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8896a7;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        .field-inner input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-family: 'DM Sans', sans-serif;
+            color: #0d1b2a;
+            background: white;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .field-inner input:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(0,201,177,0.12);
+        }
+        .field-inner input:focus + .icon,
+        .field-inner .icon:has(~ input:focus) { color: var(--cyan); }
+
+        .eye-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #8896a7;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .eye-toggle:hover { color: var(--cyan); }
+
+        .options-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            font-size: 0.82rem;
+        }
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #4a5568;
+            cursor: pointer;
+        }
+        .remember input { accent-color: var(--cyan); }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--cyan), #00a896);
+            border: none;
+            border-radius: 10px;
+            color: var(--navy);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(0,201,177,0.3);
+            transition: all 0.3s;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(0,201,177,0.4);
+        }
+
+        .login-footer {
+            margin-top: 32px;
+            text-align: center;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .login-footer p {
+            font-size: 0.78rem;
+            color: #8896a7;
+            margin-bottom: 8px;
+        }
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        .role-badge i { color: var(--cyan); }
+
+        @media (max-width: 700px) {
+            .login-deco { display: none; }
+            .login-panel { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- DÉCO -->
+    <div class="login-deco">
+        <div class="deco-logo"><i class="fas fa-boxes"></i></div>
+        <div class="deco-title">Gestion de Stock</div>
+        <div class="deco-sub">Gérez vos articles, mouvements et rapports en un seul endroit.</div>
+        <div class="deco-stats">
+            <div class="deco-stat">
+                <span class="val">100%</span>
+                <span class="lbl">Traçabilité</span>
+            </div>
+            <div class="deco-stat">
+                <span class="val">Live</span>
+                <span class="lbl">Temps réel</span>
+            </div>
+            <div class="deco-stat">
+                <span class="val">3+</span>
+                <span class="lbl">Rôles</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMULAIRE -->
+    <div class="login-panel">
+        <div class="login-box">
+            <div class="login-greeting">Bon retour 👋</div>
+            <div class="login-hint">Connectez-vous pour accéder à votre espace</div>
+
+            {% if error %}
+            <div class="error-box">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('login') }}">
+
+                <div class="field">
+                    <label>Identifiant</label>
+                    <div class="field-inner">
+                        <i class="fas fa-user icon"></i>
+                        <input type="text" name="login" placeholder="Nom d'utilisateur" required autofocus>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Mot de passe</label>
+                    <div class="field-inner">
+                        <i class="fas fa-lock icon"></i>
+                        <input type="password" name="password" id="passwordInput" placeholder="••••••••" required>
+                        <button type="button" class="eye-toggle" id="eyeBtn">
+                            <i class="far fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="options-row">
+                    <label class="remember">
+                        <input type="checkbox" name="remember"> Se souvenir de moi
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-arrow-right-to-bracket"></i> Se connecter
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>Accès réservé au personnel autorisé</p>
+                <span class="role-badge">
+                    <i class="fas fa-shield-alt"></i> Administration de stock
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pwInput = document.getElementById('passwordInput');
+        const eyeBtn  = document.getElementById('eyeBtn');
+        eyeBtn.addEventListener('click', () => {
+            const isPass = pwInput.type === 'password';
+            pwInput.type = isPass ? 'text' : 'password';
+            eyeBtn.innerHTML = isPass
+                ? '<i class="far fa-eye-slash"></i>'
+                : '<i class="far fa-eye"></i>';
+        });
+    </script>
+</body>
+</html>

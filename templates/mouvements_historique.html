@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Historique · Gestion Stock</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .filter-row select, .filter-row input {
+            min-width: 140px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; border: none; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-outline { background: white; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <span><i class="fas fa-boxes"></i> Gestion Stock - {{ session.user_name }} ({{ session.user_role }})</span>
+        <div>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            {% if session.user_role in ['admin', 'magasinier'] %}
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            {% endif %}
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            {% if session.user_role in ['admin', 'magasinier'] %}
+            <a href="{{ url_for('rapports') }}"><i class="fas fa-file-alt"></i> Rapports</a>
+            {% endif %}
+            {% if session.user_role == 'admin' %}
+            <a href="{{ url_for('utilisateurs') }}"><i class="fas fa-users"></i> Utilisateurs</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1><i class="fas fa-history"></i> Historique des mouvements</h1>
+            <a href="{{ url_for('mouvements') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nouveau mouvement
+            </a>
+        </div>
+
+        <!-- Filtres -->
+        <div class="card">
+            <h3><i class="fas fa-filter"></i> Filtrer</h3>
+            <form method="get" action="{{ url_for('historique_mouvements') }}">
+                <div class="filter-row">
+                    <select name="article_id">
+                        <option value="">Tous les articles</option>
+                        {% for a in articles %}
+                        <option value="{{ a.id }}" {% if filtres.article_id == a.id %}selected{% endif %}>{{ a.designation }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if user_role != 'technicien' %}
+                    <select name="technicien_id">
+                        <option value="">Tous les techniciens</option>
+                        {% for t in techniciens %}
+                        <option value="{{ t.id }}" {% if filtres.technicien_id == t.id %}selected{% endif %}>{{ t.nom }} {{ t.prenom }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                    <input type="text" name="ticket" placeholder="N° Ticket" value="{{ filtres.ticket }}">
+                    <input type="text" name="lot" placeholder="Lot" value="{{ filtres.lot }}">
+                    <input type="date" name="date_debut" value="{{ filtres.date_debut }}">
+                    <input type="date" name="date_fin" value="{{ filtres.date_fin }}">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrer</button>
+                    <a href="{{ url_for('historique_mouvements') }}" class="btn btn-outline">Réinitialiser</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tableau -->
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Article</th>
+                            <th>Type</th>
+                            <th>Qté</th>
+                            <th>Utilisateur</th>
+                            <th>Technicien</th>
+                            <th>Ticket</th>
+                            <th>Lot</th>
+                            <th>Commentaire</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in mouvements %}
+                        <tr>
+                            <td>{{ m.date_mouvement }}</td>
+                            <td>{{ m.designation }}</td>
+                            <td>{{ m.type_mouvement }}</td>
+                            <td>{{ m.quantite }}</td>
+                            <td>{{ m.user_nom }}</td>
+                            <td>{{ m.tech_nom or '' }}</td>
+                            <td>{{ m.ticket or '' }}</td>
+                            <td>{{ m.lot or '' }}</td>
+                            <td>{{ m.commentaire or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9">Aucun mouvement trouvé</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

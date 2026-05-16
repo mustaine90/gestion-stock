@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Fournisseurs · Gestion Stock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header"><i class="fas fa-boxes"></i><span>Stock Manager</span></div>
+        <nav class="sidebar-nav">
+            <span class="nav-section">Principal</span>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            {% if session.user_role in ['admin', 'magasinier'] %}
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            {% endif %}
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            {% if session.user_role in ['admin', 'magasinier'] %}
+            <span class="nav-section">Gestion</span>
+            <a href="{{ url_for('rapports') }}"><i class="fas fa-file-alt"></i> Rapports</a>
+            <a href="{{ url_for('techniciens') }}"><i class="fas fa-hard-hat"></i> Techniciens</a>
+            <a href="{{ url_for('fournisseurs') }}" class="active"><i class="fas fa-truck"></i> Fournisseurs</a>
+            {% endif %}
+            {% if session.user_role == 'admin' %}
+            <span class="nav-section">Administration</span>
+            <a href="{{ url_for('utilisateurs') }}"><i class="fas fa-users"></i> Utilisateurs</a>
+            <a href="{{ url_for('logs') }}"><i class="fas fa-history"></i> Journaux</a>
+            {% endif %}
+            <span class="nav-section">Compte</span>
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+        <div class="sidebar-footer"><span>{{ session.user_name }}</span><small>{{ session.user_role }}</small></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-title"><h1><i class="fas fa-truck"></i> Fournisseurs</h1></div>
+        </header>
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}{% for category, message in messages %}
+                <div class="alert alert-{{ category }}"><i class="fas fa-info-circle"></i> {{ message }}</div>
+              {% endfor %}{% endif %}
+            {% endwith %}
+
+            <!-- Formulaire d'ajout -->
+            <div class="card">
+                <h3><i class="fas fa-plus-circle"></i> Ajouter un fournisseur</h3>
+                <form method="post" action="{{ url_for('ajouter_fournisseur') }}" class="form-grid">
+                    <div class="form-group">
+                        <label>Nom *</label>
+                        <input type="text" name="nom" placeholder="Nom du fournisseur" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ICE</label>
+                        <input type="text" name="ice" placeholder="Numéro ICE">
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="text" name="telephone" placeholder="+212 ...">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" placeholder="contact@exemple.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Site web</label>
+                        <input type="text" name="site_web" placeholder="https://...">
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Ajouter
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Liste -->
+            <div class="card">
+                <h3><i class="fas fa-list"></i> Liste des fournisseurs</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th><th>ICE</th><th>Téléphone</th>
+                                <th>Email</th><th>Site web</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in fournisseurs %}
+                            <tr>
+                                <td style="font-weight:600;">{{ f.nom }}</td>
+                                <td style="color:var(--text-muted);">{{ f.ice or '—' }}</td>
+                                <td>{{ f.telephone or '—' }}</td>
+                                <td>{{ f.email or '—' }}</td>
+                                <td>
+                                    {% if f.site_web %}
+                                    <a href="{{ f.site_web }}" target="_blank"
+                                       style="color:var(--cyan); text-decoration:none;">
+                                        <i class="fas fa-external-link-alt"></i> Voir
+                                    </a>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td style="display:flex; gap:6px;">
+                                    <button class="btn btn-outline btn-sm" onclick="toggleEdit({{ f.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="post"
+                                          action="{{ url_for('supprimer_fournisseur', fournisseur_id=f.id) }}"
+                                          onsubmit="return confirm('Supprimer ce fournisseur ?');">
+                                        <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr id="edit-{{ f.id }}" style="display:none; background:var(--bg);">
+                                <td colspan="6" style="padding:16px;">
+                                    <form method="post"
+                                          action="{{ url_for('modifier_fournisseur', fournisseur_id=f.id) }}"
+                                          class="form-grid">
+                                        <div class="form-group">
+                                            <label>Nom</label>
+                                            <input type="text" name="nom" value="{{ f.nom }}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>ICE</label>
+                                            <input type="text" name="ice" value="{{ f.ice or '' }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Téléphone</label>
+                                            <input type="text" name="telephone" value="{{ f.telephone or '' }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email</label>
+                                            <input type="email" name="email" value="{{ f.email or '' }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Site web</label>
+                                            <input type="text" name="site_web" value="{{ f.site_web or '' }}">
+                                        </div>
+                                        <div class="form-group" style="flex-direction:row; gap:8px; align-items:flex-end;">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-save"></i> Enregistrer
+                                            </button>
+                                            <button type="button" class="btn btn-outline btn-sm"
+                                                    onclick="toggleEdit({{ f.id }})">Annuler</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:40px; color:var(--text-muted);">
+                                    <i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                                    Aucun fournisseur enregistré
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function toggleEdit(id) {
+    const row = document.getElementById('edit-' + id);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+</body>
+</html>

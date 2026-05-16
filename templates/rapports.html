@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapports · Gestion Stock</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .rapport-section {
+            background: white;
+            border-radius: 20px;
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid #eef2f6;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 3px;
+            color: #475569;
+        }
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        .total-row {
+            background: #f8fafc;
+            font-weight: 700;
+        }
+        .chart-container {
+            height: 300px;
+            margin-top: 1.5rem;
+        }
+        .balance-link {
+            text-align: right;
+            margin-bottom: 1rem;
+        }
+        .th-sortable a {
+            color: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .th-sortable a i {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <span><i class="fas fa-boxes"></i> Gestion Stock - {{ session.user_name }} ({{ session.user_role }})</span>
+        <div>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            <a href="{{ url_for('rapports') }}" class="active"><i class="fas fa-file-alt"></i> Rapports</a>
+            {% if session.user_role == 'admin' %}
+            <a href="{{ url_for('utilisateurs') }}"><i class="fas fa-users"></i> Utilisateurs</a>
+            <a href="{{ url_for('logs') }}"><i class="fas fa-history"></i> Logs</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1><i class="fas fa-file-alt"></i> Rapports</h1>
+        </div>
+
+        <div class="balance-link">
+            <a href="{{ url_for('rapport_balance') }}" class="btn btn-primary">
+                <i class="fas fa-balance-scale"></i> Balance de Stock mensuelle
+            </a>
+        </div>
+
+        <!-- SECTION VALORISATION -->
+        <div class="rapport-section">
+            <div class="section-header">
+                <h2><i class="fas fa-euro-sign"></i> Valorisation du stock</h2>
+                <div>
+                    <button class="btn btn-outline btn-sm" onclick="exportTableToCSV('valorisation-table', 'valorisation_stock.csv')">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="printSection('valorisation-section')">
+                        <i class="fas fa-print"></i> Imprimer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtres valorisation -->
+            <form method="get" action="{{ url_for('rapports') }}" class="filter-bar" style="margin-bottom: 20px;">
+                <input type="hidden" name="date_debut" value="{{ date_debut }}">
+                <input type="hidden" name="date_fin" value="{{ date_fin }}">
+                <div class="filter-group">
+                    <label>🔍 Rechercher</label>
+                    <input type="text" name="recherche_valo" placeholder="Réf. ou désignation..." value="{{ recherche_valo }}">
+                </div>
+                <div class="filter-group">
+                    <label>Trier par</label>
+                    <select name="tri_valo">
+                        <option value="designation" {% if tri_valo == 'designation' %}selected{% endif %}>Désignation</option>
+                        <option value="qte_stock" {% if tri_valo == 'qte_stock' %}selected{% endif %}>Quantité</option>
+                        <option value="valeur" {% if tri_valo == 'valeur' %}selected{% endif %}>Valeur</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Ordre</label>
+                    <select name="ordre_valo">
+                        <option value="asc" {% if ordre_valo == 'asc' %}selected{% endif %}>Croissant</option>
+                        <option value="desc" {% if ordre_valo == 'desc' %}selected{% endif %}>Décroissant</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Appliquer</button>
+            </form>
+
+            <div id="valorisation-section">
+                <div class="table-responsive">
+                    <table class="table" id="valorisation-table">
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>Désignation</th>
+                                <th>Stock</th>
+                                <th>Prix unitaire HT (€)</th>
+                                <th>Valeur totale (€)</th>
+                                <th>Valeur totale (MAD)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in valorisation %}
+                            <tr>
+                                <td>{{ v.reference }}</td>
+                                <td>{{ v.designation }}</td>
+                                <td>{{ v.quantite_stock }}</td>
+                                {{ "%.2f"|format(v.prix_unitaire_ht or 0) }}
+                                <td>{{ "%.2f"|format(v.valeur_eur) }}</td>
+                                <td>{{ "%.2f"|format(v.valeur_mad) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="text-center">Aucun article trouvé</td></tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="4"><strong>TOTAL</strong></td>
+                                <td><strong>{{ "%.2f"|format(total_eur) }} €</strong></td>
+                                <td><strong>{{ "%.2f"|format(total_mad) }} MAD</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION CONSOMMATION PAR PÉRIODE -->
+        <div class="rapport-section">
+            <div class="section-header">
+                <h2><i class="fas fa-calendar-alt"></i> Consommation par période</h2>
+                <div>
+                    <button class="btn btn-outline btn-sm" onclick="exportTableToCSV('consommation-table', 'consommation_{{ date_debut }}_{{ date_fin }}.csv')">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                </div>
+            </div>
+
+            <form method="get" action="{{ url_for('rapports') }}" class="filter-bar" style="margin-bottom: 20px;">
+                <div class="filter-group">
+                    <label>Date début</label>
+                    <input type="date" name="date_debut" value="{{ date_debut }}">
+                </div>
+                <div class="filter-group">
+                    <label>Date fin</label>
+                    <input type="date" name="date_fin" value="{{ date_fin }}">
+                </div>
+                <div class="filter-group">
+                    <label>🔍 Rechercher</label>
+                    <input type="text" name="recherche_conso" placeholder="Réf. ou désignation..." value="{{ recherche_conso }}">
+                </div>
+                <div class="filter-group">
+                    <label>Trier par</label>
+                    <select name="tri_conso">
+                        <option value="designation" {% if tri_conso == 'designation' %}selected{% endif %}>Article</option>
+                        <option value="total_sortie" {% if tri_conso == 'total_sortie' %}selected{% endif %}>Qté sortie</option>
+                        <option value="cout_eur" {% if tri_conso == 'cout_eur' %}selected{% endif %}>Coût total</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Ordre</label>
+                    <select name="ordre_conso">
+                        <option value="asc" {% if ordre_conso == 'asc' %}selected{% endif %}>Croissant</option>
+                        <option value="desc" {% if ordre_conso == 'desc' %}selected{% endif %}>Décroissant</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Appliquer</button>
+            </form>
+
+            <p><strong>Période :</strong> du {{ date_debut }} au {{ date_fin }}</p>
+
+            <div class="table-responsive">
+                <table class="table" id="consommation-table">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Quantité sortie</th>
+                            <th>Prix unitaire HT (€)</th>
+                            <th>Coût total (€)</th>
+                            <th>Coût total (MAD)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in consommation %}
+                        <tr>
+                            <td>{{ c.designation }} ({{ c.reference }})</td>
+                            <td>{{ c.total_sortie }}</td>
+                            {{ "%.2f"|format(c.prix_unitaire_ht or 0) }}
+                            <td>{{ "%.2f"|format(c.cout_eur) }}</td>
+                            <td>{{ "%.2f"|format(c.cout_mad) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center">Aucune sortie sur cette période</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td><strong>TOTAL</strong></td>
+                            <td><strong>{{ total_sorties_qte }}</strong></td>
+                            <td></td>
+                            <td><strong>{{ "%.2f"|format(total_sorties_eur) }} €</strong></td>
+                            <td><strong>{{ "%.2f"|format(total_sorties_mad) }} MAD</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            {% if consommation %}
+            <div class="chart-container">
+                <canvas id="consommationChart"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Export CSV
+        function exportTableToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            let csv = [];
+            for (let row of table.rows) {
+                let cols = [];
+                for (let cell of row.cells) {
+                    cols.push('"' + cell.innerText.replace(/"/g, '""') + '"');
+                }
+                csv.push(cols.join(','));
+            }
+            const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        function printSection(sectionId) {
+            const content = document.getElementById(sectionId).cloneNode(true);
+            const win = window.open('', '', 'width=800,height=600');
+            win.document.write('<html><head><title>Valorisation Stock</title>');
+            win.document.write('<link rel="stylesheet" href="{{ url_for("static", filename="style.css") }}">');
+            win.document.write('</head><body>');
+            win.document.write(content.outerHTML);
+            win.document.write('</body></html>');
+            win.document.close();
+            win.print();
+        }
+
+        // Graphique consommation (si données)
+        {% if consommation %}
+        const ctx = document.getElementById('consommationChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [{% for c in consommation %}"{{ c.designation|replace('"', '\\"') }}",{% endfor %}],
+                datasets: [{
+                    label: 'Quantité sortie',
+                    data: [{% for c in consommation %}{{ c.total_sortie }},{% endfor %}],
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Unités' } }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Balance de Stock</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .balance-container {
+            max-width: 1300px;
+            margin: 20px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+        }
+        .balance-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 20px;
+        }
+        .logo {
+            max-width: 150px;
+            margin-right: 30px;
+        }
+        .title {
+            flex: 1;
+            text-align: center;
+        }
+        .title h2 {
+            font-size: 28px;
+            color: #1e293b;
+            margin: 0;
+        }
+        .title h3 {
+            font-size: 22px;
+            color: #3b82f6;
+            margin: 10px 0 0;
+        }
+        .filter-form {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #475569;
+        }
+        .balance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .balance-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .balance-table td {
+            padding: 10px 8px;
+            border: 1px solid #e2e8f0;
+            text-align: right;
+        }
+        .balance-table td:first-child,
+        .balance-table td:nth-child(2) {
+            text-align: left;
+        }
+        .balance-table tfoot td {
+            background: #f1f5f9;
+            font-weight: 700;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #cbd5e0;
+            color: #1e293b;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+        }
+        select, input {
+            padding: 0.6rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        @media print {
+            .navbar, .filter-form, .action-buttons, .btn { display: none; }
+            .balance-container { box-shadow: none; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <span><i class="fas fa-boxes"></i> Gestion Stock - {{ session.user_name }} ({{ session.user_role }})</span>
+        <div>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            <a href="{{ url_for('rapports') }}" class="active"><i class="fas fa-file-alt"></i> Rapports</a>
+            {% if session.user_role == 'admin' %}
+            <a href="{{ url_for('utilisateurs') }}"><i class="fas fa-users"></i> Utilisateurs</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h1><i class="fas fa-balance-scale"></i> Balance de Stock</h1>
+            <p>Stock initial, entrées, sorties et stock final par mois.</p>
+        </div>
+
+        <div class="balance-container" id="balance-report">
+            <!-- En-tête avec logo -->
+            <div class="balance-header">
+                <img src="{{ logo_url }}" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/150x75?text=LOGO'">
+                <div class="title">
+                    <h2>LA BALANCE DE STOCK</h2>
+                    <h3>{% if nom_mois %}{{ nom_mois }}{% else %}Sélectionnez un mois{% endif %}</h3>
+                </div>
+            </div>
+
+            <!-- Formulaire de sélection -->
+            <form method="post" class="filter-form">
+                <div class="filter-group">
+                    <label>Mois</label>
+                    <select name="mois" required>
+                        <option value="">-- Mois --</option>
+                        {% for m_num, m_nom in mois_list %}
+                        <option value="{{ m_num }}" {% if mois_selected == m_num %}selected{% endif %}>{{ m_nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Année</label>
+                    <select name="annee" required>
+                        <option value="">-- Année --</option>
+                        {% for a in annees %}
+                        <option value="{{ a }}" {% if annee_selected == a %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-chart-bar"></i> Générer</button>
+                {% if data %}
+                <div class="action-buttons">
+                    <button type="submit" name="export" value="csv" class="btn btn-outline"><i class="fas fa-file-csv"></i> CSV</button>
+                    <button type="button" onclick="window.print()" class="btn btn-outline"><i class="fas fa-print"></i> Imprimer PDF</button>
+                </div>
+                {% endif %}
+            </form>
+
+            <!-- Messages d'information -->
+            {% if annees|length == 0 %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> Aucun mouvement enregistré. Ajoutez des entrées/sorties pour générer un rapport.
+            </div>
+            {% endif %}
+
+            {% if data %}
+            <div class="table-responsive">
+                <table class="balance-table">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Référence</th>
+                            <th>Stock initial</th>
+                            <th>Entrée</th>
+                            <th>Total de stock</th>
+                            <th>Sortie</th>
+                            <th>Stock final</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        <tr>
+                            <td>{{ row.designation }}</td>
+                            <td>{{ row.reference }}</td>
+                            <td>{{ row.stock_initial }}</td>
+                            <td>{{ row.entrees }}</td>
+                            <td>{{ row.total_stock }}</td>
+                            <td>{{ row.sorties }}</td>
+                            <td>{{ row.stock_final }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><strong>TOTAL</strong></td>
+                            <td><strong>{{ total_initial }}</strong></td>
+                            <td><strong>{{ total_entrees }}</strong></td>
+                            <td><strong>{{ total_initial + total_entrees }}</strong></td>
+                            <td><strong>{{ total_sorties }}</strong></td>
+                            <td><strong>{{ total_final }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p style="margin-top: 20px; font-style: italic;">* Les quantités sont en unités.</p>
+            {% elif request.method == 'POST' %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Aucun mouvement pour ce mois.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Script pour définir la date max à aujourd'hui -->
+    <script>
+        // Par défaut, si aucun mois/année n'est sélectionné, on pourrait pré-remplir avec le mois/année en cours
+        document.addEventListener('DOMContentLoaded', function() {
+            const moisSelect = document.querySelector('select[name="mois"]');
+            const anneeSelect = document.querySelector('select[name="annee"]');
+            
+            // Si les sélecteurs existent et sont vides de sélection, on met le mois/année en cours
+            if (moisSelect && moisSelect.value === '' && anneeSelect && anneeSelect.value === '') {
+                const today = new Date();
+                const currentMonth = today.getMonth() + 1;
+                const currentYear = today.getFullYear();
+                
+                // Vérifier si le mois existe dans les options
+                let monthOption = Array.from(moisSelect.options).find(opt => opt.value == currentMonth);
+                if (monthOption) moisSelect.value = currentMonth;
+                
+                // Vérifier si l'année existe dans les options
+                let yearOption = Array.from(anneeSelect.options).find(opt => opt.value == currentYear);
+                if (yearOption) anneeSelect.value = currentYear;
+            }
+        });
+    </script>
+</body>
+</html>

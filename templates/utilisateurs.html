@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Utilisateurs · Gestion Stock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header"><i class="fas fa-boxes"></i><span>Stock Manager</span></div>
+        <nav class="sidebar-nav">
+            <span class="nav-section">Principal</span>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            <span class="nav-section">Gestion</span>
+            <a href="{{ url_for('rapports') }}"><i class="fas fa-file-alt"></i> Rapports</a>
+            <a href="{{ url_for('techniciens') }}"><i class="fas fa-hard-hat"></i> Techniciens</a>
+            <a href="{{ url_for('fournisseurs') }}"><i class="fas fa-truck"></i> Fournisseurs</a>
+            <span class="nav-section">Administration</span>
+            <a href="{{ url_for('utilisateurs') }}" class="active"><i class="fas fa-users"></i> Utilisateurs</a>
+            <a href="{{ url_for('logs') }}"><i class="fas fa-history"></i> Journaux</a>
+            <span class="nav-section">Compte</span>
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+        <div class="sidebar-footer"><span>{{ session.user_name }}</span><small>{{ session.user_role }}</small></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-title"><h1><i class="fas fa-users"></i> Utilisateurs</h1></div>
+        </header>
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}{% for category, message in messages %}
+                <div class="alert alert-{{ category }}"><i class="fas fa-info-circle"></i> {{ message }}</div>
+              {% endfor %}{% endif %}
+            {% endwith %}
+
+            <!-- Ajout -->
+            <div class="card">
+                <h3><i class="fas fa-user-plus"></i> Ajouter un utilisateur</h3>
+                <form method="post" action="{{ url_for('ajouter_utilisateur') }}" class="form-grid">
+                    <div class="form-group"><label>Nom *</label>
+                        <input type="text" name="nom" placeholder="Nom" required></div>
+                    <div class="form-group"><label>Prénom *</label>
+                        <input type="text" name="prenom" placeholder="Prénom" required></div>
+                    <div class="form-group"><label>Login *</label>
+                        <input type="text" name="login" placeholder="Identifiant" required></div>
+                    <div class="form-group"><label>Mot de passe *</label>
+                        <input type="password" name="password" placeholder="••••••" required></div>
+                    <div class="form-group"><label>Rôle</label>
+                        <select name="role">
+                            <option value="admin">Admin</option>
+                            <option value="magasinier">Magasinier</option>
+                            <option value="technicien">Technicien</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end; flex-direction:row; gap:12px; align-items:flex-end;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" name="actif" checked> Actif
+                        </label>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Liste -->
+            <div class="card">
+                <h3><i class="fas fa-list"></i> Liste des utilisateurs</h3>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Nom</th><th>Login</th><th>Rôle</th><th>Statut</th><th>Permissions</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td style="font-weight:600;">{{ u.prenom }} {{ u.nom }}</td>
+                                <td style="font-family:'Outfit',sans-serif; font-size:0.85rem; color:var(--text-muted);">
+                                    {{ u.login }}
+                                </td>
+                                <td>
+                                    <span class="badge {% if u.role == 'admin' %}badge-danger{% elif u.role == 'magasinier' %}badge-info{% else %}badge-muted{% endif %}">
+                                        {{ u.role }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if u.actif %}
+                                    <span class="badge badge-success"><i class="fas fa-circle"></i> Actif</span>
+                                    {% else %}
+                                    <span class="badge badge-muted">Inactif</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-outline btn-sm" onclick="togglePerms({{ u.id }})">
+                                        <i class="fas fa-sliders-h"></i> Modifier
+                                    </button>
+                                </td>
+                                <td>
+                                    <form method="post"
+                                          action="{{ url_for('supprimer_utilisateur', user_id=u.id) }}"
+                                          onsubmit="return confirm('Supprimer cet utilisateur ?');">
+                                        <button class="btn btn-danger btn-sm"
+                                                {% if u.id == session.user_id %}disabled title="Vous ne pouvez pas vous supprimer"{% endif %}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Panneau permissions -->
+                            <tr id="perms-{{ u.id }}" style="display:none; background:var(--bg);">
+                                <td colspan="6" style="padding:20px;">
+                                    <form method="post"
+                                          action="{{ url_for('modifier_utilisateur', user_id=u.id) }}">
+                                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:16px;">
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_manage_users" {% if u.can_manage_users %}checked{% endif %}> Gérer utilisateurs
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_manage_articles" {% if u.can_manage_articles %}checked{% endif %}> Gérer articles
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_manage_stock_entries" {% if u.can_manage_stock_entries %}checked{% endif %}> Gérer entrées
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_validate_exits" {% if u.can_validate_exits %}checked{% endif %}> Valider sorties
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_view_reports" {% if u.can_view_reports %}checked{% endif %}> Voir rapports
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="can_view_history" {% if u.can_view_history %}checked{% endif %}> Voir historique
+                                            </label>
+                                            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;">
+                                                <input type="checkbox" name="actif" {% if u.actif %}checked{% endif %}> Compte actif
+                                            </label>
+                                            <div class="form-group">
+                                                <label>Rôle</label>
+                                                <select name="role">
+                                                    <option value="admin" {% if u.role=='admin' %}selected{% endif %}>Admin</option>
+                                                    <option value="magasinier" {% if u.role=='magasinier' %}selected{% endif %}>Magasinier</option>
+                                                    <option value="technicien" {% if u.role=='technicien' %}selected{% endif %}>Technicien</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Nouveau mot de passe</label>
+                                                <input type="password" name="password" placeholder="Laisser vide = inchangé">
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:8px;">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-save"></i> Enregistrer
+                                            </button>
+                                            <button type="button" class="btn btn-outline btn-sm"
+                                                    onclick="togglePerms({{ u.id }})">Annuler</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+function togglePerms(userId) {
+    const row = document.getElementById('perms-' + userId);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+</body>
+</html>

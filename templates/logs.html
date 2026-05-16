@@ -1,0 +1,103 @@
+<!-- ===== LOGS ===== -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Journaux · Gestion Stock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header"><i class="fas fa-boxes"></i><span>Stock Manager</span></div>
+        <nav class="sidebar-nav">
+            <span class="nav-section">Principal</span>
+            <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Tableau de bord</a>
+            <a href="{{ url_for('articles') }}"><i class="fas fa-cubes"></i> Articles</a>
+            <a href="{{ url_for('mouvements') }}"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+            <span class="nav-section">Gestion</span>
+            <a href="{{ url_for('rapports') }}"><i class="fas fa-file-alt"></i> Rapports</a>
+            <a href="{{ url_for('techniciens') }}"><i class="fas fa-hard-hat"></i> Techniciens</a>
+            <a href="{{ url_for('fournisseurs') }}"><i class="fas fa-truck"></i> Fournisseurs</a>
+            <span class="nav-section">Administration</span>
+            <a href="{{ url_for('utilisateurs') }}"><i class="fas fa-users"></i> Utilisateurs</a>
+            <a href="{{ url_for('logs') }}" class="active"><i class="fas fa-history"></i> Journaux</a>
+            <span class="nav-section">Compte</span>
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        </nav>
+        <div class="sidebar-footer"><span>{{ session.user_name }}</span><small>{{ session.user_role }}</small></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-title"><h1><i class="fas fa-history"></i> Journal d'activité</h1></div>
+        </header>
+        <div class="content">
+            <!-- Filtre -->
+            <div class="card">
+                <h3><i class="fas fa-filter"></i> Filtrer par utilisateur</h3>
+                <form method="get" class="form-grid">
+                    <div class="form-group">
+                        <label>Utilisateur</label>
+                        <select name="user_id">
+                            <option value="">Tous les utilisateurs</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}" {% if filtre_user_id == u.id %}selected{% endif %}>
+                                {{ u.prenom }} {{ u.nom }} ({{ u.login }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex-direction:row; gap:8px; align-items:flex-end;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-search"></i> Filtrer
+                        </button>
+                        <a href="{{ url_for('logs') }}" class="btn btn-outline btn-sm">Réinitialiser</a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tableau -->
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr><th>Date</th><th>Utilisateur</th><th>Action</th><th>Détails</th><th>IP</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">
+                                    {{ log.date_log }}
+                                </td>
+                                <td style="font-weight:600; font-size:0.85rem;">
+                                    {{ log.prenom }} {{ log.nom }}
+                                    <span style="color:var(--text-muted); font-weight:400;">({{ log.login }})</span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-info">{{ log.action }}</span>
+                                </td>
+                                <td style="font-size:0.82rem; color:var(--text-muted);">{{ log.details or '—' }}</td>
+                                <td style="font-size:0.78rem; color:var(--text-muted); font-family:monospace;">
+                                    {{ log.ip_address or '—' }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:40px; color:var(--text-muted);">
+                                    <i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                                    Aucun log trouvé
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>
